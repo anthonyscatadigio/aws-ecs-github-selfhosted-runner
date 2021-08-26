@@ -5,13 +5,13 @@
     "inferenceAccelerators": [],
     "containerDefinitions": [
         {
-            "name": "ecs-devops-sandbox",
-            "image": "ecs-devops-sandbox-repository:00000",
+            "name": "ecs-github-task",
+            "image": "ecs-image:00000",
             "resourceRequirements": null,
             "essential": true,
             "portMappings": [
                 {
-                    "containerPort": "8080",
+                    "containerPort": "80",
                     "protocol": "tcp"
                 }
 
@@ -22,8 +22,8 @@
     "networkMode": "awsvpc",
     "memory": "512",
     "cpu": "256",
-    "executionRoleArn": "arn:aws:iam::864141050364:role/ecs-devops-sandbox-execution-role",
-    "family": "ecs-devops-sandbox-task-definition",
+    "executionRoleArn": "arn:aws:iam::{{AWS_ACCOUNT}}:role/ecs-github-execution-role",
+    "family": "ecs-devops-task-definition",
     "taskRoleArn": "",
     "placementConstraints": []
 }

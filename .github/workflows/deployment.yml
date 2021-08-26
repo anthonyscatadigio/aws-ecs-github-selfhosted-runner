@@ -1,0 +1,55 @@
+name: GitHub Actions ECS
+on:
+ - push
+env:
+  AWS_ACCOUNT: 864141050364
+  AWS_REGION: ap-southeast-2
+  ECR_REPO_NAME: ecs-github
+  ECS_CLUSTER_NAME: ecs-github
+  ECS_SERVICE_NAME: ecs-github-service
+  ECS_CONTAINER_NAME: ecs-github-task
+jobs:
+  build_deploy_ecs:
+    runs-on: [self-hosted, Linux, X64]
+    name: GitHub Actions ECS
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ env.AWS_ACCOUNT }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          ECR_REPOSITORY: ${{ env.ECR_REPO_NAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          /kaniko/executor --force --dockerfile=Dockerfile --context=./part5 --destination=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+          echo "::set-output name=image::${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+      - name: Render account name
+        id: render_account_name
+        run: |
+          sed -i.bak "s|{{AWS_ACCOUNT}}|${{ env.AWS_ACCOUNT }}|" ./part5/ecs/task-definition.json
+          sed -i.bak "s|ecs-github-task|${{ env.ECS_CONTAINER_NAME }}|" ./part5/ecs/task-definition.json
+
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ./part5/ecs/task-definition.json
+          container-name: ${{ env.ECS_CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE_NAME }}
+          cluster: ${{ env.ECS_CLUSTER_NAME }}
+          wait-for-service-stability: true
